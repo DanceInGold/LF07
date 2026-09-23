@@ -26,6 +26,16 @@ def send_to_display(text):
         except Exception as e:
             print(f"Fehler beim Senden: {e}")
 
+def send_servo_command(angle):
+    if ser:
+        try:
+            # Sendet z.B. "SERVO:180\n" an den Arduino
+            ser.write(f"SERVO:{angle}\n".encode('utf-8'))
+            # Kurze Pause, damit sich Arduino nicht beim Lesen verschluckt
+            time.sleep(0.1) 
+        except Exception as e:
+            print(f"Fehler beim Servo-Befehl: {e}")
+
 def countdown_task():
     """Läuft im Hintergrund und aktualisiert jede Sekunde das Display."""
     global is_dispenser_open
@@ -64,10 +74,10 @@ def close_dispenser(reason="Manuell"):
     if countdown_thread:
         countdown_thread.join(timeout=1.0)
     
-    # Motor/Servo-Logik hier einfügen
+    send_servo_command(0)
     
     send_to_display("Dispenser Locked\nSystem Bereit")
-
+    
 def open_dispenser():
     global is_dispenser_open, time_opened, countdown_thread
     
@@ -75,7 +85,7 @@ def open_dispenser():
     time_opened = time.time()
     print("Dispenser geöffnet.")
     
-    # Motor/Servo-Logik hier einfügen
+    send_servo_command(180)
     
     # Alten Thread beenden, falls einer läuft
     stop_event.set()
