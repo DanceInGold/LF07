@@ -1,0 +1,103 @@
+# MHTF Setup Informationen
+
+## Raspberry Pi Zero
+
+Hostname:
+RaspDatabase.local
+
+Projektpfad:
+/home/admin/mhtf
+
+Starten:
+
+cd ~/mhtf
+source venv/bin/activate
+python app.py
+
+---
+
+## Raspberry Pi 3
+
+Hostname:
+RaspData.local
+
+RFID Dienst:
+
+python3 ~/rfid_reader.py
+
+---
+
+## MariaDB
+
+Datenbank:
+mhtf
+
+Benutzer:
+mhtf_app
+
+Passwort:
+<HIER_EINTRAGEN>
+
+---
+
+## Flask
+
+SECRET_KEY:
+
+<HIER_EINTRAGEN>
+
+---
+
+## MQTT
+
+Broker:
+127.0.0.1
+
+Port:
+1883
+
+---
+
+## RFID
+
+Arduino:
+RFID_Test.ino
+
+Serielle Schnittstelle:
+/dev/ttyACM0
+
+Baudrate:
+9600
+
+---
+
+## Verzeichnisstruktur
+
+Pi Zero:
+/home/admin/mhtf
+
+Pi 3:
+/home/admin/rfid_reader.py
+
+Arduino:
+/home/admin/arduino/RFID_Test/RFID_Test.ino
+
+---
+
+## Benötigte Software
+
+Pi Zero:
+- Flask
+- Flask-Login
+- SQLAlchemy
+- PyMySQL
+- MQTT
+
+Pi 3:
+- MariaDB
+- PySerial
+- PyMySQL
+
+Arduino:
+- MFRC522
+- LiquidCrystal_I2C
