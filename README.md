@@ -1,12 +1,48 @@
-# LF07
+# MHTF - Medical & Health Tracking Framework
 
-Willkommen zu unserem LF07 Codespace. Da dieses Lernfeld stark Code Based ist, werden wir   
-dieses Repository bzw. insbesondere Git öfter nutzen.
+## Projektbeschreibung
 
-## How to
+MHTF ist ein Berufsschulprojekt zur Verwaltung von Medikationsplänen und RFID-basierten Berechtigungen.
 
-Wenn Ihr eure arbeit in diesem Projekt mergen wollt, müsst ihr erstmal einen branch erstellen, in welchem Ihr arbeitet. Sobald Ihr fertig seid, könnt ihr einen Pull request machen und wir Reviewn eure arbeit und mergen sie dann anschließend.
+## Hardware
 
-Es gibt keine Merges ohne Readme.md. Zu jedem projekt sollte es eine readme geben, welche protokolliert was euer projekt bzw. eure codes machen und wie man diese anwendet UND welche requirements benötigt werden (e.g. pips, librarys etc.)
+- Raspberry Pi Zero W 1.1
+- Raspberry Pi 3
+- Arduino Uno
+- MFRC522 RFID Reader
+- LCD1602 I2C Display
+- Buzzer
 
-## Have Fun!
+## Software
+
+- Python
+- Flask
+- MariaDB
+- SQLAlchemy
+- MQTT
+- Arduino C++
+
+## Funktionen
+
+- Benutzerverwaltung
+- Medikationspläne
+- RFID-Kartenverwaltung
+- Datenbankgestützte RFID-Prüfung
+- LCD-Anzeige
+- Buzzer-Rückmeldung
+- Event-Logging
+
+## Architektur
+
+RFID Karte
+→ Arduino Uno
+→ Raspberry Pi 3
+→ MariaDB
+
+Ergebnis:
+- ALLOW
+- DENY
+
+→ LCD-Anzeige
+→ Buzzer
+→ event_logs
