@@ -4,14 +4,12 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 
-// I2C SH1106 OLED Display Setup
-#define i2c_Address 0x3c // Typische I2C Adresse für dieses Display
+#define i2c_Address 0x3c 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define OLED_RESET -1   // Kein Hardware-Reset-Pin
+#define OLED_RESET -1   
 Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// Pin-Definitionen
 const int SERVO_PIN = 3;
 const int TRIG_PIN = 4;
 const int ECHO_PIN = 5;
@@ -21,62 +19,47 @@ const int STEPS_PER_REV = 2048;
 Servo myServo;
 Stepper myStepper(STEPS_PER_REV, IN1, IN2, IN3, IN4);
 
-// Globale Variablen für das Display
 String currentTime = "00:00";
 String countdown = "00:00";
 
 void updateDisplay() {
   display.clearDisplay();
-  
-  // 1. Uhrzeit oben rechts (TextSize 1 = Standardgröße)
   display.setTextSize(1);
   display.setTextColor(SH110X_WHITE);
   display.setCursor(95, 0);
   display.print(currentTime);
-  
-  // 2. Überschrift
   display.setCursor(0, 20);
   display.print("Naechste Ausgabe in...");
-  
-  // 3. Großer Timer mittig (TextSize 2 = Doppelte Größe)
   display.setTextSize(2);
   display.setCursor(35, 40);
   display.print(countdown);
-  
-  display.display(); // Zeichnet alles auf das Display
+  display.display(); 
 }
 
 void setup() {
   Serial.begin(115200);
-  
-  // Display initialisieren
-  // Wir verzögern kurz, um dem I2C Bus Zeit zu geben
   delay(250); 
-  if(!display.begin(i2c_Address, true)) {
-    // Falls das Display nicht gefunden wird, schicke eine Warnung an den seriellen Monitor
-    Serial.println("WARNUNG: SH1106 nicht gefunden!");
-  } else {
+  
+  if(display.begin(i2c_Address, true)) {
     display.clearDisplay();
     display.display();
     updateDisplay();
   }
   
-  // Hardware initialisieren
   myServo.attach(SERVO_PIN);
-  myServo.write(0); // Grundposition
+  // myServo.write(0); <-- Entfernt, um Absturz beim Booten zu verhindern!
   
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   
-  myStepper.setSpeed(10); // Geschwindigkeit in RPM
+  myStepper.setSpeed(10);
 }
 
 void loop() {
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
-    command.trim(); // Entfernt unsichtbare Zeichen
+    command.trim(); 
 
-    // --- OLED UPDATE ---
     if (command.startsWith("OLED:")) {
       String data = command.substring(5);
       int sepIdx = data.indexOf('|');
@@ -88,21 +71,20 @@ void loop() {
       Serial.println("ACK:OLED");
     }
     
-    // --- SERVO STEUERUNG ---
     else if (command.startsWith("SRV:")) {
+      Serial.println("ACK:SRV_START"); // NEU: Bestätigung VOR der Bewegung
       int angle = command.substring(4).toInt();
       myServo.write(angle);
-      Serial.println("ACK:SRV");
+      Serial.println("ACK:SRV_DONE");  // NEU: Bestätigung NACH der Bewegung
     }
     
-    // --- STEPPER STEUERUNG ---
     else if (command.startsWith("STP:")) {
+      Serial.println("ACK:STP_START"); // NEU: Bestätigung VOR der Bewegung
       int steps = command.substring(4).toInt();
       myStepper.step(steps);
-      Serial.println("ACK:STP");
+      Serial.println("ACK:STP_DONE");  // NEU: Bestätigung NACH der Bewegung
     }
     
-    // --- ULTRASCHALL ABFRAGE ---
     else if (command == "US:GET") {
       digitalWrite(TRIG_PIN, LOW);
       delayMicroseconds(2);
