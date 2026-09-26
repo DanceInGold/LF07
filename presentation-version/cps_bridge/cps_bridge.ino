@@ -1,10 +1,15 @@
 #include <Servo.h>
 #include <Stepper.h>
-#include <U8g2lib.h>
 #include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
 
 // I2C SH1106 OLED Display Setup
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+#define i2c_Address 0x3c // Typische I2C Adresse für dieses Display
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1   // Kein Hardware-Reset-Pin
+Adafruit_SH1106G display = Adafruit_SH1106G(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Pin-Definitionen
 const int SERVO_PIN = 3;
@@ -21,42 +26,55 @@ String currentTime = "00:00";
 String countdown = "00:00";
 
 void updateDisplay() {
-  u8g2.clearBuffer();
+  display.clearDisplay();
   
-  // 1. Uhrzeit oben rechts
-  u8g2.setFont(u8g2_font_ncenB08_tr); 
-  u8g2.drawStr(95, 10, currentTime.c_str());
+  // 1. Uhrzeit oben rechts (TextSize 1 = Standardgröße)
+  display.setTextSize(1);
+  display.setTextColor(SH110X_WHITE);
+  display.setCursor(95, 0);
+  display.print(currentTime);
   
-  // 2. Überschrift (Wir nutzen "ae" statt "ä" um ASCII-Font-Probleme zu vermeiden)
-  u8g2.drawStr(10, 30, "Naechste Ausgabe in...");
+  // 2. Überschrift
+  display.setCursor(0, 20);
+  display.print("Naechste Ausgabe in...");
   
-  // 3. Großer Timer mittig
-  u8g2.setFont(u8g2_font_logisoso16_tr); // Schöne große, gut lesbare Schrift
-  u8g2.drawStr(38, 55, countdown.c_str());
+  // 3. Großer Timer mittig (TextSize 2 = Doppelte Größe)
+  display.setTextSize(2);
+  display.setCursor(35, 40);
+  display.print(countdown);
   
-  u8g2.sendBuffer(); // Zeichnet alles auf das Display
+  display.display(); // Zeichnet alles auf das Display
 }
 
 void setup() {
   Serial.begin(115200);
   
   // Display initialisieren
-  u8g2.begin();
-  updateDisplay();
+  // Wir verzögern kurz, um dem I2C Bus Zeit zu geben
+  delay(250); 
+  if(!display.begin(i2c_Address, true)) {
+    // Falls das Display nicht gefunden wird, schicke eine Warnung an den seriellen Monitor
+    Serial.println("WARNUNG: SH1106 nicht gefunden!");
+  } else {
+    display.clearDisplay();
+    display.display();
+    updateDisplay();
+  }
   
+  // Hardware initialisieren
   myServo.attach(SERVO_PIN);
-  myServo.write(0);
+  myServo.write(0); // Grundposition
   
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   
-  myStepper.setSpeed(10);
+  myStepper.setSpeed(10); // Geschwindigkeit in RPM
 }
 
 void loop() {
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
-    command.trim();
+    command.trim(); // Entfernt unsichtbare Zeichen
 
     // --- OLED UPDATE ---
     if (command.startsWith("OLED:")) {
