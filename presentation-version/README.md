@@ -8,6 +8,8 @@ Dieses Projekt implementiert einen Cyber-Physical System (CPS) Prototypen mit ei
 
 Diese Architektur ermöglicht es, komplexe Berechnungen und Multithreading (z. B. asynchrone Displays und Sensor-Loops) auf dem leistungsstärkeren Raspberry Pi auszuführen, während der Arduino die harten Echtzeitanforderungen der Hardware-Pins übernimmt.
 
+```
+mermaid
 graph TD
     Start([Start der Demo]) --> Init[Grundzustand: Servo auf 0°]
     Init --> TimerStart[OLED: 120-Sekunden-Timer starten]
@@ -28,8 +30,7 @@ graph TD
     classDef wait fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
     class TimerCheck,SensorCheck wait;
     class Stepper1,Stepper2,Servo action;
-
-
+```
 ---
 
 ## 2. Systemanforderungen (Requirements)
