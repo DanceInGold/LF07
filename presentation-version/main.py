@@ -1,32 +1,25 @@
 import time
 import threading
-from cps_lib import steppermotor, servomotor, ultraschall
+from cps_lib import steppermotor, servomotor, ultraschall, demo # <-- demo importiert
 from cps_lib.serial_link import send_and_receive
 
-# Globale Variablen zur Steuerung der Threads
 automatik_aktiv = False 
 programm_laeuft = True
 
 def automatik_task():
-    """Hintergrund-Thread: Führt die Sensor-if-Cases aus, wenn aktiviert."""
     global automatik_aktiv, programm_laeuft
-    
     while programm_laeuft:
         if automatik_aktiv:
             dist = ultraschall.get_distance()
-            
-            # if-cases (mit reduzierten Prints, damit das Terminal lesbar bleibt)
             if 0 < dist < 15.0:
                 print(f"\n[Auto] Hindernis ({dist:.1f}cm)! Ausweichmuster.")
                 servomotor.set_angle(0)
                 steppermotor.muster_radar_sweep()
-                
             elif 15.0 <= dist < 50.0:
                 print(f"\n[Auto] Objekt in Reichweite ({dist:.1f}cm).")
                 servomotor.set_angle(180)
                 send_and_receive("STP:200") 
-                
-        time.sleep(0.5) # Kurze Pause, damit die CPU nicht überlastet
+        time.sleep(0.5)
 
 def main():
     global automatik_aktiv, programm_laeuft
@@ -34,7 +27,6 @@ def main():
     print("CPS Prototyp initialisiert...")
     servomotor.set_angle(90)
     
-    # Starte den Automatik-Loop als Hintergrund-Thread
     auto_thread = threading.Thread(target=automatik_task)
     auto_thread.start()
     
@@ -44,10 +36,10 @@ def main():
     print(" auto off    -> Stoppt die Sensor-if-cases")
     print(" srv <0-180> -> Servo manuell bewegen (z.B. 'srv 45')")
     print(" stp 1       -> Stepper: Radar-Muster manuell")
-    print(" stp 2       -> Stepper: Kontinuierlich manuell")
+    print(" stp 2       -> Stepper: 180°-Muster manuell")
+    print(" demo        -> Startet die vordefinierte Präsentations-Sequenz") # <-- Neu
     print(" exit        -> Beendet das Programm")
     
-    # CLI-Schleife für manuelle Eingaben
     while programm_laeuft:
         try:
             cmd = input("\nEingabe > ").strip().lower()
@@ -55,6 +47,13 @@ def main():
             if cmd == "exit":
                 programm_laeuft = False
                 break
+                
+            elif cmd == "demo":
+                # Verhindern, dass Demo und Automatik gleichzeitig laufen
+                if automatik_aktiv:
+                    print("Fehler: Bitte deaktiviere zuerst die Automatik mit 'auto off', bevor du die Demo startest.")
+                else:
+                    demo.run() # <-- Hier wird die Demo aufgerufen
                 
             elif cmd == "auto on":
                 automatik_aktiv = True
@@ -89,11 +88,10 @@ def main():
             elif cmd != "":
                 print("Unbekannter Befehl. Bitte erneut versuchen.")
                 
-        except KeyboardInterrupt: # Fängt STRG+C ab
+        except KeyboardInterrupt:
             programm_laeuft = False
             break
 
-    # Programm sauber beenden
     print("\nFahre System herunter...")
     auto_thread.join()
     print("Beendet.")
