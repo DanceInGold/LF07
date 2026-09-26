@@ -8,6 +8,7 @@ Dieses Projekt implementiert einen Cyber-Physical System (CPS) Prototypen mit ei
 
 Diese Architektur ermöglicht es, komplexe Berechnungen und Multithreading (z. B. asynchrone Displays und Sensor-Loops) auf dem leistungsstärkeren Raspberry Pi auszuführen, während der Arduino die harten Echtzeitanforderungen der Hardware-Pins übernimmt.
 
+### Logik Diagram:
 ```mermaid
 graph TD
     Start([Start der Demo]) --> Init[Grundzustand: Servo auf 0°]
@@ -29,6 +30,60 @@ graph TD
     classDef wait fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
     class TimerCheck,SensorCheck wait;
     class Stepper1,Stepper2,Servo action;
+```
+
+### Technisches Diagram:
+```mermaid
+sequenceDiagram
+    participant CLI as main.py (CLI)
+    participant Demo as demo.py (Logik)
+    participant OLED as oled.py (Thread)
+    participant Serial as serial_link (Mutex Lock)
+    participant Arduino as Arduino (Bridge / Hardware)
+
+    CLI->>Demo: run() aufrufen
+    Demo->>Serial: servomotor.set_angle(0)
+    Serial->>Arduino: UART: "SRV:0\n"
+    
+    Demo->>OLED: init() & start_timer(120)
+    activate OLED
+    Note right of OLED: Hintergrund-Thread startet
+
+    par OLED Aktualisierung (Asynchron)
+        loop Jede Sekunde
+            OLED->>Serial: send_and_receive("OLED:xx:xx|Timer")
+            Serial->>Arduino: UART string auswerten & Display updaten
+        end
+    and Warten in der Hauptlogik
+        loop Solange countdown_seconds > 0
+            Demo->>OLED: Lese countdown_seconds
+            Note left of Demo: time.sleep(1)
+        end
+    end
+
+    Demo->>Serial: steppermotor.muster_radar_sweep()
+    Note right of Serial: Lock blockiert serielle Schnittstelle für andere Threads
+    Serial->>Arduino: UART: "STP:341", "STP:-682", ... (Schleife)
+    Arduino-->>Serial: "ACK:STP"
+    
+    Demo->>Serial: steppermotor.muster_180_und_zurueck()
+    Serial->>Arduino: UART: "STP:1024" -> Delay 5s -> "STP:-1024"
+    Arduino-->>Serial: "ACK:STP"
+
+    loop Bis Distanz <= 10.0 cm
+        Demo->>Serial: ultraschall.get_distance()
+        Serial->>Arduino: UART: "US:GET"
+        Arduino-->>Serial: "DIST:x.x"
+        Serial-->>Demo: Float (Distanz)
+    end
+
+    Demo->>Serial: servomotor.set_angle(180)
+    Serial->>Arduino: UART: "SRV:180\n"
+    
+    Demo->>OLED: stop()
+    deactivate OLED
+    Demo->>Serial: servomotor.set_angle(0) (Reset)
+    Demo-->>CLI: Rückkehr zum Terminal-Menü
 ```
 ---
 
