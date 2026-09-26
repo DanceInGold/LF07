@@ -10,7 +10,7 @@ def run():
     # OLED & Timer (z.B. auf 120s, für Tests kannst du das hier auch auf 10s stellen)
     print("\n[System] Starte OLED Display und 120-Sekunden-Timer...")
     oled.init()
-    oled.start_timer(120)
+    oled.start_timer(30)
     
     print("[System] Warte auf Ablauf des Timers...")
     while oled.countdown_seconds > 0:
