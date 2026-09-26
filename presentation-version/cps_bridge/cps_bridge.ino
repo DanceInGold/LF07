@@ -1,26 +1,61 @@
 #include <Servo.h>
-#include <Stepper.h>
 #include <U8g2lib.h>
 #include <Wire.h>
 
-// WICHTIG: Das '_1_' in der Mitte bedeutet Page-Buffer (spart ca. 900 Bytes RAM!)
+// U8g2 Page-Buffer Modus (spart RAM)
 U8G2_SH1106_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
-// Pin-Definitionen
+// Pin-Definitionen (Stripper-Pins strikt der Reihe nach!)
 const int SERVO_PIN = 3;
 const int TRIG_PIN = 4;
 const int ECHO_PIN = 5;
-const int IN1 = 8, IN2 = 10, IN3 = 9, IN4 = 11; 
-const int STEPS_PER_REV = 2048; 
+const int IN1 = 8;
+const int IN2 = 9;
+const int IN3 = 10;
+const int IN4 = 11; 
 
 Servo myServo;
-Stepper myStepper(STEPS_PER_REV, IN1, IN2, IN3, IN4);
 
-// Globale Variablen
 String currentTime = "00:00";
 String countdown = "00:00";
 
-// Die neue, RAM-sparende Zeichen-Methode
+// --- CUSTOM HALF-STEP FUNKTION FÜR 28BYJ-48 ---
+void moveSmooth(long steps) {
+  // 8-Schritt-Matrix für butterweiche Bewegungen
+  const byte stepSequence[8][4] = {
+    {1,0,0,0}, {1,1,0,0}, {0,1,0,0}, {0,1,1,0},
+    {0,0,1,0}, {0,0,1,1}, {0,0,0,1}, {1,0,0,1}
+  };
+  
+  // Python denkt 2048 = 360°. Im Half-Step sind es aber 4096. Daher * 2.
+  long halfSteps = steps * 2; 
+  long stepsLeft = abs(halfSteps);
+  int direction = (halfSteps > 0) ? 1 : -1;
+  static int currentStep = 0; 
+  
+  while(stepsLeft > 0) {
+    currentStep += direction;
+    if(currentStep > 7) currentStep = 0;
+    if(currentStep < 0) currentStep = 7;
+    
+    digitalWrite(IN1, stepSequence[currentStep][0]);
+    digitalWrite(IN2, stepSequence[currentStep][1]);
+    digitalWrite(IN3, stepSequence[currentStep][2]);
+    digitalWrite(IN4, stepSequence[currentStep][3]);
+    
+    // Geschwindigkeit: 1000 Mikrosekunden (1ms) pro Schritt. 
+    // Falls du ihn schneller/langsamer willst, ändere diesen Wert (z.B. 800 für schneller, 1500 für langsamer)
+    delayMicroseconds(1000); 
+    stepsLeft--;
+  }
+  
+  // Nach der Bewegung: Spulen stromlos schalten (Verhindert Überhitzen und Strom-Zusammenbrüche)
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
 void updateDisplay() {
   u8g2.firstPage();
   do {
@@ -46,7 +81,10 @@ void setup() {
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   
-  myStepper.setSpeed(10);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
 }
 
 void loop() {
@@ -70,8 +108,8 @@ void loop() {
       Serial.println("ACK:SRV");
     }
     else if (command.startsWith("STP:")) {
-      int steps = command.substring(4).toInt();
-      myStepper.step(steps);
+      long steps = command.substring(4).toInt();
+      moveSmooth(steps); // Aufruf der neuen butterweichen Funktion
       Serial.println("ACK:STP");
     }
     else if (command == "US:GET") {

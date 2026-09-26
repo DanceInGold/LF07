@@ -21,10 +21,10 @@ def run():
     print("\n[Timer] Abgelaufen! Starte Hardware-Sequenz.\n")
     
     print("[Aktion 1] Starte Stepper: Radar Sweep...")
-    steppermotor.muster_radar_sweep()
+    steppermotor.pill_filter()
     
     print("[Aktion 2] Starte Stepper: 180° Drehung, 5s Pause, und zurück...")
-    steppermotor.muster_180_und_zurueck()
+    steppermotor.pill_drop()
     
     print("\n[Aktion 3] Warte auf Sensor-Auslösung (Distanz <= 10 cm)...")
     sensor_ausgeloest = False
