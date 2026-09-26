@@ -39,13 +39,13 @@ def send_and_receive(cmd):
         try:
             with serial_lock: 
                 # Debug-Print: Zeigt dir im Terminal, was gerade gesendet wird
-                print(f"-> Sende: {cmd}") 
+                # print(f"-> Sende: {cmd}") 
                 
                 arduino.write((cmd + '\n').encode('utf-8'))
                 response = arduino.readline().decode('utf-8').strip()
                 
                 # Debug-Print: Zeigt dir die Antwort vom Arduino
-                print(f"<- Empfangen: {response}") 
+                # print(f"<- Empfangen: {response}") 
                 return response
         except Exception as e:
             print(f"[Serial] Verbindungsabbruch während der Übertragung: {e}")
