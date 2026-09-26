@@ -1,4 +1,4 @@
-# Projektdokumentation: Cyber-Physical System (CPS) Prototyp
+# Demo: MHTF - Cyber-Physical System (CPS) Prototyp
 
 ## 1. Projektübersicht & Architektur
 Dieses Projekt implementiert einen Cyber-Physical System (CPS) Prototypen mit einer strikten Trennung von Logik und Hardware-Ausführung. 
@@ -7,6 +7,28 @@ Dieses Projekt implementiert einen Cyber-Physical System (CPS) Prototypen mit ei
 *   **Hardware-Ebene (Arduino):** Agiert als "Dumb Bridge". Er empfängt strukturierte String-Befehle über die serielle USB-Schnittstelle, steuert die Aktoren an, liest Sensordaten aus und sendet die Ergebnisse zurück.
 
 Diese Architektur ermöglicht es, komplexe Berechnungen und Multithreading (z. B. asynchrone Displays und Sensor-Loops) auf dem leistungsstärkeren Raspberry Pi auszuführen, während der Arduino die harten Echtzeitanforderungen der Hardware-Pins übernimmt.
+
+graph TD
+    Start([Start der Demo]) --> Init[Grundzustand: Servo auf 0°]
+    Init --> TimerStart[OLED: 120-Sekunden-Timer starten]
+    
+    TimerStart --> TimerCheck{Ist der Timer<br>auf 0 abgelaufen?}
+    TimerCheck -- Nein --> TimerCheck
+    TimerCheck -- Ja --> Stepper1[Aktion 1: Stepper-Motor führt 'Radar-Muster' aus]
+    
+    Stepper1 --> Stepper2[Aktion 2: Stepper-Motor dreht 180°, wartet und fährt zurück]
+    
+    Stepper2 --> SensorCheck{Hand / Objekt näher<br>als 10 cm am Sensor?}
+    SensorCheck -- Nein --> SensorCheck
+    SensorCheck -- Ja --> Servo[Aktion 3: Servo-Motor schlägt auf 180° aus]
+    
+    Servo --> End([Demo beendet: System wird zurückgesetzt])
+    
+    classDef action fill:#d4edda,stroke:#28a745,stroke-width:2px;
+    classDef wait fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
+    class TimerCheck,SensorCheck wait;
+    class Stepper1,Stepper2,Servo action;
+
 
 ---
 
