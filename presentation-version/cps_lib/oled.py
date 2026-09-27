@@ -9,21 +9,17 @@ from PIL import ImageFont
 countdown_seconds = 0
 oled_active = False
 current_headline = "Nächste Ausgabe in..."
-is_standby = False # Steuert den Anzeige-Modus
+current_mode = "standby" # Modi: "standby", "timer", "off"
 
 device = None
 
-# Echte Schriftarten (TrueType) vom Raspberry Pi OS laden
+# Echte Schriftarten (TrueType) nur für den Standby-Modus laden
 try:
-    # Font für normales Layout
-    font_default = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12)
-    
-    # Fonts für Standby (Datum klein, Uhrzeit massiv)
     font_standby_date = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 14)
     font_standby_time = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 36)
 except IOError:
     print("[OLED] Warnung: TrueType Fonts nicht gefunden. Nutze Fallback.")
-    font_default = font_standby_date = font_standby_time = ImageFont.load_default()
+    font_standby_date = font_standby_time = ImageFont.load_default()
 
 def start_timer(seconds):
     global countdown_seconds
@@ -33,13 +29,12 @@ def set_headline(text):
     global current_headline
     current_headline = text
 
-def set_standby(state):
-    """Aktiviert oder deaktiviert den Standby-Bildschirm."""
-    global is_standby
-    is_standby = state
+def set_mode(mode):
+    """Setzt den Anzeige-Modus: 'standby', 'timer' oder 'off'"""
+    global current_mode
+    current_mode = mode
 
 def get_text_width(draw, text, font):
-    """Hilfsfunktion für Kompatibilität zwischen alten und neuen Pillow Versionen."""
     try:
         return draw.textlength(text, font=font)
     except AttributeError:
@@ -47,29 +42,30 @@ def get_text_width(draw, text, font):
         return width
 
 def _oled_worker():
-    global countdown_seconds, oled_active, current_headline, is_standby
+    global countdown_seconds, oled_active, current_headline, current_mode
     
     while oled_active:
         now_time = datetime.now().strftime("%H:%M")
         now_date = datetime.now().strftime("%d.%m.%Y")
         
         with canvas(device) as draw:
-            if is_standby:
-                # --- STANDBY LAYOUT ---
-                # 1. Exakte Pixelbreiten berechnen
+            if current_mode == "off":
+                # Zeichnet absolut nichts -> Display bleibt tiefschwarz
+                pass
+                
+            elif current_mode == "standby":
+                # --- STANDBY LAYOUT (Fett, zentriert) ---
                 w_date = get_text_width(draw, now_date, font_standby_date)
                 w_time = get_text_width(draw, now_time, font_standby_time)
                 
-                # 2. X-Position berechnen (Bildschirm ist 128px breit -> Zentrieren)
                 x_date = (128 - w_date) / 2
                 x_time = (128 - w_time) / 2
                 
-                # 3. Zeichnen (Y-Positionen manuell für perfekten Abstand gewählt)
                 draw.text((x_date, 10), now_date, font=font_standby_date, fill="white")
                 draw.text((x_time, 26), now_time, font=font_standby_time, fill="white")
                 
-            else:
-                # --- NORMALES TIMER LAYOUT ---
+            elif current_mode == "timer":
+                # --- NORMALES TIMER LAYOUT (Demo-Modus) ---
                 if countdown_seconds > 0:
                     mins, secs = divmod(countdown_seconds, 60)
                     timer_str = f"{mins:02d}:{secs:02d}"
@@ -77,13 +73,10 @@ def _oled_worker():
                 else:
                     timer_str = "00:00"
                     
-                draw.text((95, 0), now_time, font=font_default, fill="white")
-                draw.text((0, 20), current_headline, font=font_default, fill="white")
-                
-                # Auch den großen Timer zentrieren wir optisch in der Mitte
-                w_timer = get_text_width(draw, timer_str, font_standby_time)
-                x_timer = (128 - w_timer) / 2
-                draw.text((x_timer, 35), timer_str, font=font_standby_time, fill="white")
+                # Nutzt absichtlich keinen Custom-Font, um das alte, exakt passende Layout wiederherzustellen
+                draw.text((95, 0), now_time, fill="white")
+                draw.text((0, 20), current_headline, fill="white")
+                draw.text((45, 40), timer_str, fill="white")
                 
         time.sleep(1)
 

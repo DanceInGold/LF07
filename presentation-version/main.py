@@ -62,14 +62,15 @@ def main():
                     demo.run() 
                 
             elif cmd == "stdby on":
-                oled.set_standby(True)
+                from cps_lib import oled
+                oled.set_mode("standby") # <- ÄNDERUNG
                 print(">> OLED Standby-Modus AKTIVIERT")
                 
             elif cmd == "stdby off":
-                oled.set_standby(False)
-                oled.set_headline("Warte auf Befehl...")
-                print(">> OLED Standby-Modus DEAKTIVIERT")
-                
+                from cps_lib import oled
+                oled.set_mode("off")     # <- ÄNDERUNG (Schaltet Display schwarz)
+                print(">> OLED Display DEAKTIVIERT (Schwarz)")
+      
             elif cmd == "auto on":
                 automatik_aktiv = True
                 print(">> Automatik AKTIVIERT")

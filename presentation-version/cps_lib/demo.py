@@ -4,9 +4,9 @@ from cps_lib import steppermotor, servomotor, ultraschall, oled
 def run():
     print("\n=== CPS Prototyp Präsentation gestartet ===")
     
-    # 1. Standby-Status merken und für die Demo zwingend deaktivieren
-    war_standby_aktiv = oled.is_standby
-    oled.set_standby(False)
+    # 1. Modus merken und für die Demo auf Timer zwingen
+    war_modus = oled.current_mode
+    oled.set_mode("timer")
     
     # Grundzustand
     servomotor.set_angle(0)
@@ -22,15 +22,13 @@ def run():
         time.sleep(1)
         
     print("\n[Timer] Abgelaufen! Starte Hardware-Sequenz.\n")
-    
-    # (Optional: Überschrift für den aktiven Teil ändern)
     oled.set_headline("System aktiv!") 
     
     print("[Aktion 1] Starte Stepper: Radar Sweep...")
-    steppermotor.pill_filter()
+    steppermotor.muster_radar_sweep()
     
     print("[Aktion 2] Starte Stepper: 180° Drehung, 5s Pause, und zurück...")
-    steppermotor.pill_drop()
+    steppermotor.muster_180_und_zurueck()
     
     print("\n[Aktion 3] Warte auf Sensor-Auslösung (Distanz <= 10 cm)...")
     sensor_ausgeloest = False
@@ -50,8 +48,5 @@ def run():
     print("\n=== Präsentation beendet ===")
     servomotor.set_angle(0)
     
-    # 2. Ursprünglichen Standby-Status wiederherstellen
-    if war_standby_aktiv:
-        oled.set_standby(True)
-    else:
-        oled.set_headline("Bereit.")
+    # 2. Ursprünglichen Modus wiederherstellen (Standby oder Schwarz)
+    oled.set_mode(war_modus)
