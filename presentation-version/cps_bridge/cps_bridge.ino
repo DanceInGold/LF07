@@ -33,7 +33,7 @@ void moveSmooth(long steps) {
     digitalWrite(IN3, stepSequence[currentStep][2]);
     digitalWrite(IN4, stepSequence[currentStep][3]);
     
-    delayMicroseconds(1000); 
+    delayMicroseconds(2000); 
     stepsLeft--;
   }
   
