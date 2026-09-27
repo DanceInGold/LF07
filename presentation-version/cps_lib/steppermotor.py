@@ -28,6 +28,5 @@ def pill_filter():
 
 def pill_drop():
     """Bewegungsmuster 2: Dreht 180°, wartet 5 Sekunden und fährt zurück."""
-    send_and_receive("STP:1024")  # 180° vorwärts
+    send_and_receive("STP:2048")  # 180° vorwärts
     time.sleep(5)                 # 5 Sekunden warten
-    send_and_receive("STP:-1024") # 180° rückwärts zum Ursprung
