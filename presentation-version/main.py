@@ -14,7 +14,7 @@ def automatik_task():
             if 0 < dist < 15.0:
                 print(f"\n[Auto] Hindernis ({dist:.1f}cm)! Ausweichmuster.")
                 servomotor.set_angle(0)
-                steppermotor.muster_radar_sweep()
+                steppermotor.pill_filter()
             elif 15.0 <= dist < 50.0:
                 print(f"\n[Auto] Objekt in Reichweite ({dist:.1f}cm).")
                 servomotor.set_angle(180)
@@ -90,10 +90,10 @@ def main():
                     muster = int(cmd.split()[1])
                     if muster == 1:
                         print(">> Führe Stepper-Muster 1 aus...")
-                        steppermotor.muster_radar_sweep()
+                        steppermotor.pill_filter()
                     elif muster == 2:
                         print(">> Führe Stepper-Muster 2 aus...")
-                        steppermotor.muster_180_und_zurueck()
+                        steppermotor.pill_drop()
                     else:
                         print("Unbekanntes Muster.")
                 except ValueError:
