@@ -14,7 +14,7 @@ def automatik_task():
             if 0 < dist < 15.0:
                 print(f"\n[Auto] Hindernis ({dist:.1f}cm)! Ausweichmuster.")
                 servomotor.set_angle(0)
-                steppermotor.pill_filter()
+                steppermotor.muster_radar_sweep()
             elif 15.0 <= dist < 50.0:
                 print(f"\n[Auto] Objekt in Reichweite ({dist:.1f}cm).")
                 servomotor.set_angle(180)
@@ -28,7 +28,7 @@ def main():
     
     # 1. OLED System direkt beim Start aktivieren
     oled.init()
-    oled.set_standby(True) # Startet standardmäßig im Standby-Modus
+    oled.set_mode("standby") 
     
     servomotor.set_angle(90)
     
@@ -40,7 +40,7 @@ def main():
     print(" auto on     -> Startet die Sensor-if-cases")
     print(" auto off    -> Stoppt die Sensor-if-cases")
     print(" stdby on    -> Aktiviert das OLED Standby-Layout (Uhrzeit/Datum)")
-    print(" stdby off   -> Kehrt zum normalen OLED Timer-Layout zurück")
+    print(" stdby off   -> Deaktiviert das Display (Schwarz)")
     print(" srv <0-180> -> Servo manuell bewegen (z.B. 'srv 45')")
     print(" stp 1       -> Stepper: Radar-Muster manuell")
     print(" stp 2       -> Stepper: 180°-Muster manuell")
@@ -62,15 +62,13 @@ def main():
                     demo.run() 
                 
             elif cmd == "stdby on":
-                from cps_lib import oled
-                oled.set_mode("standby") # <- ÄNDERUNG
+                oled.set_mode("standby")
                 print(">> OLED Standby-Modus AKTIVIERT")
                 
             elif cmd == "stdby off":
-                from cps_lib import oled
-                oled.set_mode("off")     # <- ÄNDERUNG (Schaltet Display schwarz)
+                oled.set_mode("off")
                 print(">> OLED Display DEAKTIVIERT (Schwarz)")
-      
+                
             elif cmd == "auto on":
                 automatik_aktiv = True
                 print(">> Automatik AKTIVIERT")
@@ -92,10 +90,10 @@ def main():
                     muster = int(cmd.split()[1])
                     if muster == 1:
                         print(">> Führe Stepper-Muster 1 aus...")
-                        steppermotor.pill_filter()
+                        steppermotor.muster_radar_sweep()
                     elif muster == 2:
                         print(">> Führe Stepper-Muster 2 aus...")
-                        steppermotor.pill_drop()
+                        steppermotor.muster_180_und_zurueck()
                     else:
                         print("Unbekanntes Muster.")
                 except ValueError:
@@ -109,8 +107,6 @@ def main():
             break
 
     print("\nFahre System herunter...")
-    
-    # 2. OLED erst beim Beenden abschalten
     oled.stop() 
     auto_thread.join()
     print("Beendet.")
