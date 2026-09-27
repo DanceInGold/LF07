@@ -4,13 +4,16 @@ from cps_lib import steppermotor, servomotor, ultraschall, oled
 def run():
     print("\n=== CPS Prototyp Präsentation gestartet ===")
     
+    # 1. Standby-Status merken und für die Demo zwingend deaktivieren
+    war_standby_aktiv = oled.is_standby
+    oled.set_standby(False)
+    
     # Grundzustand
     servomotor.set_angle(0)
     
-    # OLED & Timer (z.B. auf 120s, für Tests kannst du das hier auch auf 10s stellen)
-    print("\n[System] Starte OLED Display und 120-Sekunden-Timer...")
-    oled.init()
-    oled.start_timer(30)
+    print("\n[System] Starte OLED Timer...")
+    oled.set_headline("Initialisiere Systeme...") 
+    oled.start_timer(10) # 10 Sekunden für Testzwecke
     
     print("[System] Warte auf Ablauf des Timers...")
     while oled.countdown_seconds > 0:
@@ -19,6 +22,9 @@ def run():
         time.sleep(1)
         
     print("\n[Timer] Abgelaufen! Starte Hardware-Sequenz.\n")
+    
+    # (Optional: Überschrift für den aktiven Teil ändern)
+    oled.set_headline("System aktiv!") 
     
     print("[Aktion 1] Starte Stepper: Radar Sweep...")
     steppermotor.pill_filter()
@@ -42,5 +48,10 @@ def run():
     time.sleep(2) 
     
     print("\n=== Präsentation beendet ===")
-    oled.stop()
     servomotor.set_angle(0)
+    
+    # 2. Ursprünglichen Standby-Status wiederherstellen
+    if war_standby_aktiv:
+        oled.set_standby(True)
+    else:
+        oled.set_headline("Bereit.")

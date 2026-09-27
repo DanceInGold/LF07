@@ -1,6 +1,6 @@
 import time
 import threading
-from cps_lib import steppermotor, servomotor, ultraschall, demo # <-- demo importiert
+from cps_lib import steppermotor, servomotor, ultraschall, demo, oled
 from cps_lib.serial_link import send_and_receive
 
 automatik_aktiv = False 
@@ -25,6 +25,11 @@ def main():
     global automatik_aktiv, programm_laeuft
     
     print("CPS Prototyp initialisiert...")
+    
+    # 1. OLED System direkt beim Start aktivieren
+    oled.init()
+    oled.set_standby(True) # Startet standardmäßig im Standby-Modus
+    
     servomotor.set_angle(90)
     
     auto_thread = threading.Thread(target=automatik_task)
@@ -34,14 +39,12 @@ def main():
     print("Befehle:")
     print(" auto on     -> Startet die Sensor-if-cases")
     print(" auto off    -> Stoppt die Sensor-if-cases")
+    print(" stdby on    -> Aktiviert das OLED Standby-Layout (Uhrzeit/Datum)")
+    print(" stdby off   -> Kehrt zum normalen OLED Timer-Layout zurück")
     print(" srv <0-180> -> Servo manuell bewegen (z.B. 'srv 45')")
     print(" stp 1       -> Stepper: Radar-Muster manuell")
     print(" stp 2       -> Stepper: 180°-Muster manuell")
     print(" demo        -> Startet die vordefinierte Präsentations-Sequenz")
-    print(" auto on     -> Startet die Sensor-if-cases")
-    print(" auto off    -> Stoppt die Sensor-if-cases")
-    print(" stdby on    -> Aktiviert das OLED Standby-Layout (Uhrzeit/Datum)")
-    print(" stdby off   -> Kehrt zum normalen OLED Timer-Layout zurück")      
     print(" exit        -> Beendet das Programm")
     
     while programm_laeuft:
@@ -53,11 +56,19 @@ def main():
                 break
                 
             elif cmd == "demo":
-                # Verhindern, dass Demo und Automatik gleichzeitig laufen
                 if automatik_aktiv:
                     print("Fehler: Bitte deaktiviere zuerst die Automatik mit 'auto off', bevor du die Demo startest.")
                 else:
-                    demo.run() # <-- Hier wird die Demo aufgerufen
+                    demo.run() 
+                
+            elif cmd == "stdby on":
+                oled.set_standby(True)
+                print(">> OLED Standby-Modus AKTIVIERT")
+                
+            elif cmd == "stdby off":
+                oled.set_standby(False)
+                oled.set_headline("Warte auf Befehl...")
+                print(">> OLED Standby-Modus DEAKTIVIERT")
                 
             elif cmd == "auto on":
                 automatik_aktiv = True
@@ -88,17 +99,7 @@ def main():
                         print("Unbekanntes Muster.")
                 except ValueError:
                     print("Fehler: Bitte 'stp 1' oder 'stp 2' eingeben.")
-
-            elif cmd == "stdby on":
-                from cps_lib import oled
-                oled.set_standby(True)
-                print(">> OLED Standby-Modus AKTIVIERT")
-                
-            elif cmd == "stdby off":
-                from cps_lib import oled
-                oled.set_standby(False)
-                print(">> OLED Standby-Modus DEAKTIVIERT")
-                
+            
             elif cmd != "":
                 print("Unbekannter Befehl. Bitte erneut versuchen.")
                 
@@ -107,6 +108,9 @@ def main():
             break
 
     print("\nFahre System herunter...")
+    
+    # 2. OLED erst beim Beenden abschalten
+    oled.stop() 
     auto_thread.join()
     print("Beendet.")
 
