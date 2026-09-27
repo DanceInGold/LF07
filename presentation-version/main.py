@@ -37,7 +37,11 @@ def main():
     print(" srv <0-180> -> Servo manuell bewegen (z.B. 'srv 45')")
     print(" stp 1       -> Stepper: Radar-Muster manuell")
     print(" stp 2       -> Stepper: 180°-Muster manuell")
-    print(" demo        -> Startet die vordefinierte Präsentations-Sequenz") # <-- Neu
+    print(" demo        -> Startet die vordefinierte Präsentations-Sequenz")
+    print(" auto on     -> Startet die Sensor-if-cases")
+    print(" auto off    -> Stoppt die Sensor-if-cases")
+    print(" stdby on    -> Aktiviert das OLED Standby-Layout (Uhrzeit/Datum)")
+    print(" stdby off   -> Kehrt zum normalen OLED Timer-Layout zurück")      
     print(" exit        -> Beendet das Programm")
     
     while programm_laeuft:
@@ -84,7 +88,17 @@ def main():
                         print("Unbekanntes Muster.")
                 except ValueError:
                     print("Fehler: Bitte 'stp 1' oder 'stp 2' eingeben.")
-            
+
+            elif cmd == "stdby on":
+                from cps_lib import oled
+                oled.set_standby(True)
+                print(">> OLED Standby-Modus AKTIVIERT")
+                
+            elif cmd == "stdby off":
+                from cps_lib import oled
+                oled.set_standby(False)
+                print(">> OLED Standby-Modus DEAKTIVIERT")
+                
             elif cmd != "":
                 print("Unbekannter Befehl. Bitte erneut versuchen.")
                 
