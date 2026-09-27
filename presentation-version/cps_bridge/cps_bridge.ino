@@ -40,7 +40,7 @@ void movePower(long steps) {
     
     // Geschwindigkeit auf 2500 Mikrosekunden (2,5ms) gesenkt. 
     // Der Motor dreht langsamer, hat dadurch aber deutlich mehr Biss.
-    delayMicroseconds(2500); 
+    delayMicroseconds(3000); 
     stepsLeft--;
   }
   
