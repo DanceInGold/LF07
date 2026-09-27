@@ -23,8 +23,8 @@ if PORT:
     print(f"[Serial] Möglicher Arduino gefunden an Port: {PORT}")
     try:
         # Timeout auf 2s, damit sich das Programm nicht aufhängt, falls der Arduino nicht antwortet
-        arduino = serial.Serial(PORT, BAUDRATE, timeout=15)
-        time.sleep(15) # WICHTIG: Arduino startet neu, wenn der Port geöffnet wird
+        arduino = serial.Serial(PORT, BAUDRATE, timeout=2)
+        time.sleep(5) # WICHTIG: Arduino startet neu, wenn der Port geöffnet wird
         print("[Serial] Verbindung erfolgreich hergestellt!")
     except Exception as e:
         print(f"[Serial] FEHLER: Port {PORT} konnte nicht geöffnet werden. (Rechte-Problem?)")
