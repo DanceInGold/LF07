@@ -24,13 +24,13 @@ def run():
     
     # --- PIPELINE STAGE 1 ---
     print("[Aktion 1] Starte Stepper: Radar Sweep...")
-    oled.start_loading("Radar Sweep läuft...", 120)
+    oled.start_loading("Medikamente werden gefiltert...", 120)
     steppermotor.pill_filter()
     oled.finish_loading_step() # Springt auf 100%
     
     # --- PIPELINE STAGE 2 ---
     print("[Aktion 2] Starte Stepper: 180° Drehung, 5s Pause, und zurück...")
-    oled.start_loading("180° Scan...", 8) 
+    oled.start_loading("Medikamente werden vorbereitet...", 8) 
     steppermotor.pill_drop()
     oled.finish_loading_step() # Springt auf 100%
     
