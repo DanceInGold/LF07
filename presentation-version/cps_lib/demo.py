@@ -41,7 +41,7 @@ def run():
     
     while not sensor_ausgeloest:
         dist = ultraschall.get_distance()
-        if 0 < dist <= 10.0:
+        if 0 < dist <= 3.0:
             print(f"!!! Objekt erkannt bei {dist:.1f} cm !!!")
             sensor_ausgeloest = True
         else:
