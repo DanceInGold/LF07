@@ -91,10 +91,10 @@ def main():
                     wert = int(cmd.split()[1])
                     if wert == 1:
                         print(">> Führe Stepper-Muster 1 aus...")
-                        steppermotor.muster_radar_sweep()
+                        steppermotor.pill_filter)
                     elif wert == 2:
                         print(">> Führe Stepper-Muster 2 aus...")
-                        steppermotor.muster_180_und_zurueck()
+                        steppermotor.pill_drop()
                     else:
                         # Jede andere Zahl wird direkt an den Arduino gesendet
                         print(f">> Bewege Stepper um {wert} Schritte...")
