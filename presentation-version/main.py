@@ -44,6 +44,7 @@ def main():
     print(" srv <0-180> -> Servo manuell bewegen (z.B. 'srv 45')")
     print(" stp 1       -> Stepper: Radar-Muster manuell")
     print(" stp 2       -> Stepper: 180°-Muster manuell")
+    print(" stp <zahl>  -> Stepper: Manuell bewegen (z.B. 'stp 1024' oder 'stp -512')") # <-- NEU
     print(" demo        -> Startet die vordefinierte Präsentations-Sequenz")
     print(" exit        -> Beendet das Programm")
     
@@ -87,17 +88,19 @@ def main():
                     
             elif cmd.startswith("stp "):
                 try:
-                    muster = int(cmd.split()[1])
-                    if muster == 1:
+                    wert = int(cmd.split()[1])
+                    if wert == 1:
                         print(">> Führe Stepper-Muster 1 aus...")
-                        steppermotor.pill_filter()
-                    elif muster == 2:
+                        steppermotor.muster_radar_sweep()
+                    elif wert == 2:
                         print(">> Führe Stepper-Muster 2 aus...")
-                        steppermotor.pill_drop()
+                        steppermotor.muster_180_und_zurueck()
                     else:
-                        print("Unbekanntes Muster.")
+                        # Jede andere Zahl wird direkt an den Arduino gesendet
+                        print(f">> Bewege Stepper um {wert} Schritte...")
+                        send_and_receive(f"STP:{wert}")
                 except ValueError:
-                    print("Fehler: Bitte 'stp 1' oder 'stp 2' eingeben.")
+                    print("Fehler: Bitte eine gültige Zahl eingeben (z.B. 'stp 512').")
             
             elif cmd != "":
                 print("Unbekannter Befehl. Bitte erneut versuchen.")
