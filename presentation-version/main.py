@@ -91,7 +91,7 @@ def main():
                     wert = int(cmd.split()[1])
                     if wert == 1:
                         print(">> Führe Stepper-Muster 1 aus...")
-                        steppermotor.pill_filter)
+                        steppermotor.pill_filter()
                     elif wert == 2:
                         print(">> Führe Stepper-Muster 2 aus...")
                         steppermotor.pill_drop()
