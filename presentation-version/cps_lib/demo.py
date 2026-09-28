@@ -7,7 +7,7 @@ def run():
     war_modus = oled.current_mode
     oled.set_mode("timer")
     
-    servomotor.set_angle(0)
+    servomotor.set_angle(60)
     
     print("\n[System] Starte OLED Timer...")
     oled.set_headline("Initialisiere Systeme...") 
@@ -52,7 +52,7 @@ def run():
     # --- PIPELINE STAGE 4 ---
     print("[Aktion 4] Führe Sensor-Reaktion aus (Servo 0° -> 180°)...")
     oled.start_loading("Wird Ausgegeben...", 5)
-    servomotor.set_angle(180)
+    servomotor.set_angle(0)
     time.sleep(2) 
     oled.finish_loading_step()
     
