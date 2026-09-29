@@ -1,0 +1,77 @@
+[
+    {
+        "id": 1,
+        "user_id": 1,
+        "patient": "Onkel Zitrus",
+        "medication": "Ibuprofen",
+        "strength": "400 mg",
+        "dosage": "1 Tablette",
+        "time": "19:26",
+        "weekdays": [
+            "Mo",
+            "Di",
+            "Mi",
+            "Do",
+            "Fr"
+        ],
+        "amount": 1,
+        "active": true,
+        "created_at": "2026-09-24T21:05:23",
+        "updated_at": "2026-09-25T08:03:52"
+    },
+    {
+        "id": 2,
+        "user_id": 1,
+        "patient": "Onkel Zitrus",
+        "medication": "Ibuprofen",
+        "strength": "400 mg",
+        "dosage": "1 Tablette",
+        "time": "16:09",
+        "weekdays": [
+            "Mo",
+            "Di",
+            "Mi",
+            "Do",
+            "Fr",
+            "Sa",
+            "So"
+        ],
+        "amount": 12,
+        "active": true,
+        "created_at": "2026-09-25T10:06:35",
+        "updated_at": "2026-09-25T10:06:52"
+    },
+    {
+        "id": 3,
+        "user_id": 1,
+        "patient": "TEstJson",
+        "medication": "Json",
+        "strength": "json",
+        "dosage": "json",
+        "time": "21:10",
+        "weekdays": [
+            "Di"
+        ],
+        "amount": 0,
+        "active": true,
+        "created_at": "2026-09-28T19:04:26",
+        "updated_at": "2026-09-28T19:04:26"
+    },
+    {
+        "id": 4,
+        "user_id": 1,
+        "patient": "thiesboss",
+        "medication": "efrg",
+        "strength": "effe",
+        "dosage": "zz",
+        "time": "02:03",
+        "weekdays": [
+            "Mo",
+            "Do"
+        ],
+        "amount": 1,
+        "active": true,
+        "created_at": "2026-09-28T20:04:08",
+        "updated_at": "2026-09-28T20:04:08"
+    }
+]
