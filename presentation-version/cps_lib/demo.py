@@ -7,7 +7,7 @@ def run():
     war_modus = oled.current_mode
     oled.set_mode("timer")
     
-    servomotor.set_angle(70)
+    servomotor.set_angle(60)
     
     print("\n[System] Starte OLED Timer...")
     oled.set_headline("Initialisiere Systeme...") 
