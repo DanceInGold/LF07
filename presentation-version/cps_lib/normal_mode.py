@@ -1,13 +1,20 @@
 import time
 import threading
-from cps_lib import servomotor, ultraschall
+import json
+import os
+from datetime import datetime
+from cps_lib import demo
 from cps_lib.serial_link import send_and_receive
 
 # --- RFID KONFIGURATION ---
-AUTHORIZED_UIDS = ["D366A70D"]
+AUTHORIZED_UIDS = ["046F9A2A", "B348D911"]
+
+# Mapping der Python-Wochentage (0 = Montag) auf die deutschen JSON-Kürzel
+WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
 is_running = False
 is_active = False
+last_triggered_minute = ""
 
 def unlock_refill_station():
     """Öffnet das Schloss asynchron für 5 Sekunden."""
@@ -18,20 +25,58 @@ def unlock_refill_station():
     print("\n[RFID] Nachfüll-Schloss wieder verriegelt.")
     print("Eingabe > ", end="", flush=True)
 
+def load_schedule():
+    """Lädt den Medikamentenplan live aus der JSON-Datei."""
+    # Erwartet den Ordner 'configs' im selben Hauptverzeichnis wie main.py
+    filepath = os.path.join(os.getcwd(), "configs", "medication_plans.json")
+    
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"\n[Warnung] Konnte '{filepath}' nicht finden. Existiert der Ordner 'configs'?")
+        return []
+    except json.JSONDecodeError:
+        print(f"\n[Fehler] Die Datei {filepath} enthält ungültiges JSON.")
+        return []
+    except Exception as e:
+        print(f"\n[Fehler] Unerwarteter Fehler beim Lesen der Config: {e}")
+        return []
+
 def _auto_worker():
-    global is_active, is_running
+    global is_active, is_running, last_triggered_minute
+    
     while is_running:
         if is_active:
-            # 1. Ultraschall-Abfrage
-            dist = ultraschall.get_distance()
-            if dist is not None and 0 < dist < 1.0:
-                print(f"\n[Auto] Hand erkannt ({dist:.1f}cm)! Gebe Pillen aus.")
-                servomotor.set_angle(180)
-                time.sleep(2)
-                servomotor.set_angle(0)
-                print("Eingabe > ", end="", flush=True)
+            # --- 1. SCHEDULER (Medikamenten-Plan prüfen) ---
+            now = datetime.now()
+            current_time_str = now.strftime("%H:%M")
+            current_weekday = WEEKDAYS_DE[now.weekday()]
             
-            # 2. RFID-Abfrage
+            # Prüfe nur, wenn in dieser exakten Minute nicht schon ausgelöst wurde
+            if current_time_str != last_triggered_minute:
+                plaene = load_schedule()
+                
+                for plan in plaene:
+                    # Überspringe inaktive Pläne
+                    if not plan.get("active", False):
+                        continue
+                    
+                    # Logik-Check: Stimmt Uhrzeit UND Wochentag überein?
+                    if plan.get("time") == current_time_str and current_weekday in plan.get("weekdays", []):
+                        print(f"\n[Scheduler] Medikament fällig: {plan.get('amount')}x {plan.get('medication')} für {plan.get('patient')}!")
+                        
+                        # Sperre diese Minute, um Doppel-Trigger zu verhindern
+                        last_triggered_minute = current_time_str
+                        
+                        # Starte den Ausgabeprozess (Vor-sortieren & auf Hand warten)
+                        demo.run()
+                        
+                        print("\n[Scheduler] Ausgabe-Zyklus beendet. Kehre in Überwachungs-Modus zurück.")
+                        print("Eingabe > ", end="", flush=True)
+                        break # Bricht die for-Schleife ab, falls 2 Pläne die exakt gleiche Uhrzeit haben
+
+            # --- 2. RFID-ABFRAGE (Nachfüll-Schloss) ---
             rfid_response = send_and_receive("RFID:GET")
             if rfid_response and rfid_response.startswith("RFID:") and rfid_response != "RFID:NONE":
                 uid = rfid_response.split(":")[1]
