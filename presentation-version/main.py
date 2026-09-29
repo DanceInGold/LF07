@@ -1,50 +1,30 @@
 import time
-import threading
-from cps_lib import steppermotor, servomotor, ultraschall, demo, oled
+from cps_lib import steppermotor, servomotor, demo, oled, normal_mode
 from cps_lib.serial_link import send_and_receive
 
-automatik_aktiv = False 
 programm_laeuft = True
 
-def automatik_task():
-    global automatik_aktiv, programm_laeuft
-    while programm_laeuft:
-        if automatik_aktiv:
-            dist = ultraschall.get_distance()
-            if 0 < dist < 15.0:
-                print(f"\n[Auto] Hindernis ({dist:.1f}cm)! Ausweichmuster.")
-                servomotor.set_angle(0)
-                steppermotor.pill_filter()
-            elif 15.0 <= dist < 50.0:
-                print(f"\n[Auto] Objekt in Reichweite ({dist:.1f}cm).")
-                servomotor.set_angle(180)
-                send_and_receive("STP:200") 
-        time.sleep(0.5)
-
 def main():
-    global automatik_aktiv, programm_laeuft
+    global programm_laeuft
     
     print("CPS Prototyp initialisiert...")
-    
-    # 1. OLED System direkt beim Start aktivieren
     oled.init()
     oled.set_mode("standby") 
     
-    servomotor.set_angle(90)
+    servomotor.set_angle(0)
+    send_and_receive("SRV2:0") # Schloss direkt beim Start sichern
     
-    auto_thread = threading.Thread(target=automatik_task)
-    auto_thread.start()
+    # Automatik-Thread im Hintergrund starten (aber noch pausiert)
+    normal_mode.start()
     
     print("\n--- CPS Steuerungs-Konsole ---")
     print("Befehle:")
-    print(" auto on     -> Startet die Sensor-if-cases")
-    print(" auto off    -> Stoppt die Sensor-if-cases")
+    print(" auto on     -> Startet Sensor-Überwachung (Ultraschall & RFID)")
+    print(" auto off    -> Stoppt Sensor-Überwachung")
     print(" stdby on    -> Aktiviert das OLED Standby-Layout (Uhrzeit/Datum)")
     print(" stdby off   -> Deaktiviert das Display (Schwarz)")
-    print(" srv <0-180> -> Servo manuell bewegen (z.B. 'srv 45')")
-    print(" stp 1       -> Stepper: Radar-Muster manuell")
-    print(" stp 2       -> Stepper: 180°-Muster manuell")
-    print(" stp <zahl>  -> Stepper: Manuell bewegen (z.B. 'stp 1024' oder 'stp -512')") # <-- NEU
+    print(" srv 1/2 <X> -> Servo 1 oder 2 manuell bewegen (z.B. 'srv 2 180')")
+    print(" stp 1/2/<X> -> Stepper steuern (Muster 1/2 oder Schritte)")
     print(" demo        -> Startet die vordefinierte Präsentations-Sequenz")
     print(" exit        -> Beendet das Programm")
     
@@ -57,7 +37,7 @@ def main():
                 break
                 
             elif cmd == "demo":
-                if automatik_aktiv:
+                if normal_mode.is_active:
                     print("Fehler: Bitte deaktiviere zuerst die Automatik mit 'auto off', bevor du die Demo startest.")
                 else:
                     demo.run() 
@@ -71,20 +51,29 @@ def main():
                 print(">> OLED Display DEAKTIVIERT (Schwarz)")
                 
             elif cmd == "auto on":
-                automatik_aktiv = True
+                normal_mode.enable()
                 print(">> Automatik AKTIVIERT")
                 
             elif cmd == "auto off":
-                automatik_aktiv = False
+                normal_mode.disable()
                 print(">> Automatik DEAKTIVIERT")
                 
             elif cmd.startswith("srv "):
                 try:
-                    winkel = int(cmd.split()[1])
-                    servomotor.set_angle(winkel)
-                    print(f">> Servo auf {winkel}°")
-                except ValueError:
-                    print("Fehler: Bitte einen gültigen Winkel eingeben (z.B. srv 90).")
+                    parts = cmd.split()
+                    servo_id = parts[1]
+                    winkel = int(parts[2])
+                    
+                    if servo_id == "1":
+                        servomotor.set_angle(winkel)
+                    elif servo_id == "2":
+                        send_and_receive(f"SRV2:{winkel}")
+                    else:
+                        print("Fehler: Bitte wähle Servo 1 oder 2 (z.B. 'srv 2 90').")
+                        continue
+                    print(f">> Servo {servo_id} auf {winkel}°")
+                except (IndexError, ValueError):
+                    print("Fehler: Befehl muss so aussehen: 'srv <1|2> <winkel>'")
                     
             elif cmd.startswith("stp "):
                 try:
@@ -96,11 +85,10 @@ def main():
                         print(">> Führe Stepper-Muster 2 aus...")
                         steppermotor.pill_drop()
                     else:
-                        # Jede andere Zahl wird direkt an den Arduino gesendet
                         print(f">> Bewege Stepper um {wert} Schritte...")
                         send_and_receive(f"STP:{wert}")
                 except ValueError:
-                    print("Fehler: Bitte eine gültige Zahl eingeben (z.B. 'stp 512').")
+                    print("Fehler: Bitte eine gültige Zahl eingeben.")
             
             elif cmd != "":
                 print("Unbekannter Befehl. Bitte erneut versuchen.")
@@ -110,8 +98,8 @@ def main():
             break
 
     print("\nFahre System herunter...")
+    normal_mode.stop()
     oled.stop() 
-    auto_thread.join()
     print("Beendet.")
 
 if __name__ == "__main__":

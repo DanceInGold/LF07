@@ -1,29 +1,33 @@
 #include <Servo.h>
+#include <SPI.h>
+#include <MFRC522.h>
+
+// RFID Setup
+#define RST_PIN 9
+#define SS_PIN 10
+MFRC522 mfrc522(SS_PIN, RST_PIN);
+String lastScannedUID = "";
 
 // Pin-Definitionen
-const int SERVO_PIN = 3;
+const int SERVO1_PIN = 3; // Ausgabe-Schleuse
+const int SERVO2_PIN = 6; // Nachfüll-Schloss
 const int TRIG_PIN = 4;
 const int ECHO_PIN = 5;
-const int IN1 = 8;
-const int IN2 = 9;
-const int IN3 = 10;
-const int IN4 = 11; 
 
-Servo myServo;
+// Stepper auf Analog-Pins!
+const int IN1 = A0;
+const int IN2 = A1;
+const int IN3 = A2;
+const int IN4 = A3; 
 
-// --- CUSTOM POWER FUNKTION (Full-Step, Dual Coil) ---
+Servo servo1;
+Servo servo2;
+
 void movePower(long steps) {
-  // 4-Schritt-Matrix: Es stehen immer exakt 2 Spulen unter Strom.
-  // Das liefert das absolute Maximum an Drehmoment für diesen Motor.
   const byte stepSequence[4][4] = {
-    {1,1,0,0}, 
-    {0,1,1,0}, 
-    {0,0,1,1}, 
-    {1,0,0,1}
+    {1,1,0,0}, {0,1,1,0}, {0,0,1,1}, {1,0,0,1}
   };
   
-  // Im Full-Step-Modus entsprechen 360° wieder exakt 2048 Schritten.
-  // Die Umrechnung (* 2) aus dem Half-Step-Code entfällt hier.
   long stepsLeft = abs(steps);
   int direction = (steps > 0) ? 1 : -1;
   static int currentStep = 0; 
@@ -38,13 +42,10 @@ void movePower(long steps) {
     digitalWrite(IN3, stepSequence[currentStep][2]);
     digitalWrite(IN4, stepSequence[currentStep][3]);
     
-    // Geschwindigkeit auf 2500 Mikrosekunden (2,5ms) gesenkt. 
-    // Der Motor dreht langsamer, hat dadurch aber deutlich mehr Biss.
     delayMicroseconds(3000); 
     stepsLeft--;
   }
   
-  // Motoren nach der Bewegung zwingend stromlos schalten
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
   digitalWrite(IN3, LOW);
@@ -54,13 +55,19 @@ void movePower(long steps) {
 void setup() {
   Serial.begin(115200);
   
-  myServo.attach(SERVO_PIN);
-  myServo.write(0);
+  // SPI & RFID initialisieren
+  SPI.begin();
+  mfrc522.PCD_Init();
+  
+  servo1.attach(SERVO1_PIN);
+  servo1.write(0);
+  
+  servo2.attach(SERVO2_PIN);
+  servo2.write(0); // 0 = Schloss zu
   
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   
-  // Stepper Pins
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
@@ -68,18 +75,38 @@ void setup() {
 }
 
 void loop() {
+  // 1. Asynchron RFID checken (Blockiert den Code nicht)
+  if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
+    String uid = "";
+    for (byte i = 0; i < mfrc522.uid.size; i++) {
+      uid += String(mfrc522.uid.uidByte[i] < 0x10 ? "0" : "");
+      uid += String(mfrc522.uid.uidByte[i], HEX);
+    }
+    uid.toUpperCase();
+    lastScannedUID = uid;
+    
+    // Karte "schlafenlegen", damit sie nicht 100x pro Sekunde gelesen wird
+    mfrc522.PICC_HaltA(); 
+  }
+
+  // 2. Befehle von Python verarbeiten
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
     command.trim(); 
 
     if (command.startsWith("SRV:")) {
       int angle = command.substring(4).toInt();
-      myServo.write(angle);
+      servo1.write(angle);
       Serial.println("ACK:SRV");
+    }
+    else if (command.startsWith("SRV2:")) {
+      int angle = command.substring(5).toInt();
+      servo2.write(angle);
+      Serial.println("ACK:SRV2");
     }
     else if (command.startsWith("STP:")) {
       long steps = command.substring(4).toInt();
-      movePower(steps); // Aufruf der neuen Power-Funktion
+      movePower(steps); 
       Serial.println("ACK:STP");
     }
     else if (command == "US:GET") {
@@ -91,9 +118,16 @@ void loop() {
       
       long duration = pulseIn(ECHO_PIN, HIGH, 30000); 
       float distance = (duration * 0.0343) / 2.0;
-      
       Serial.print("DIST:");
       Serial.println(distance);
+    }
+    else if (command == "RFID:GET") {
+      if (lastScannedUID != "") {
+        Serial.println("RFID:" + lastScannedUID);
+        lastScannedUID = ""; // Speicher nach Übermittlung leeren
+      } else {
+        Serial.println("RFID:NONE");
+      }
     }
   }
 }
