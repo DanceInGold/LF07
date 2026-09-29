@@ -4,7 +4,7 @@ from cps_lib import servomotor, ultraschall
 from cps_lib.serial_link import send_and_receive
 
 # --- RFID KONFIGURATION ---
-AUTHORIZED_UIDS = ["046F9A2A", "B348D911"]
+AUTHORIZED_UIDS = ["D366A70D"]
 
 is_running = False
 is_active = False
@@ -24,7 +24,7 @@ def _auto_worker():
         if is_active:
             # 1. Ultraschall-Abfrage
             dist = ultraschall.get_distance()
-            if dist is not None and 0 < dist < 15.0:
+            if dist is not None and 0 < dist < 1.0:
                 print(f"\n[Auto] Hand erkannt ({dist:.1f}cm)! Gebe Pillen aus.")
                 servomotor.set_angle(180)
                 time.sleep(2)
