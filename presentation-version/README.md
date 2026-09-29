@@ -1,190 +1,94 @@
-# Demo: MHTF - Cyber-Physical System (CPS) Prototyp
+# Projektdokumentation: Autonomes CPS-Medikamenten-Ausgabesystem
 
-## 1. Projektübersicht & Architektur
-Dieses Projekt implementiert einen Cyber-Physical System (CPS) Prototypen mit einer strikten Trennung von Logik und Hardware-Ausführung. 
+## 1. Projektübersicht
 
-*   **Logik-Ebene (Raspberry Pi):** Ein modulares Python-Backend übernimmt die komplette Entscheidungsfindung, Zeitsteuerung (Multithreading) und Ablauflogik. Das System nutzt das **"Single Point of Entry"-Muster**, bei dem die `main.py` als alleinige Steuerungszentrale und Command Line Interface (CLI) dient.
-*   **Hardware-Ebene (Arduino):** Agiert als "Dumb Bridge". Er empfängt strukturierte String-Befehle über die serielle USB-Schnittstelle, steuert die Aktoren an, liest Sensordaten aus und sendet die Ergebnisse zurück.
+Das Projekt ist ein **Cyber-Physical System (CPS)** zur automatisierten, DSGVO-konformen und sicheren Ausgabe von Medikamenten. Es schlägt eine Brücke zwischen einer digitalen Web-Verwaltung (Software) und physischer Mechanik (Hardware). Das System liest JSON-basierte Medikamentenpläne aus, bereitet die Ausgabe asynchron durch mechanische Vorsortierung vor und gibt die Medikamente berührungslos über Sensoren aus. Eine RFID-gestützte Verriegelung sichert das Gerät vor unbefugtem Zugriff.
 
-Diese Architektur ermöglicht es, komplexe Berechnungen und Multithreading (z. B. asynchrone Displays und Sensor-Loops) auf dem leistungsstärkeren Raspberry Pi auszuführen, während der Arduino die harten Echtzeitanforderungen der Hardware-Pins übernimmt.
+## 2. Hardware-Architektur & Pinout
 
-### Logik Diagram:
-```mermaid
-graph TD
-    Start([Start der Demo]) --> Init[Grundzustand: Servo auf 0°]
-    Init --> TimerStart[OLED: 120-Sekunden-Timer starten]
-    
-    TimerStart --> TimerCheck{Ist der Timer<br>auf 0 abgelaufen?}
-    TimerCheck -- Nein --> TimerCheck
-    TimerCheck -- Ja --> Stepper1[Aktion 1: Stepper-Motor führt 'Radar-Muster' aus]
-    
-    Stepper1 --> Stepper2[Aktion 2: Stepper-Motor dreht 180°, wartet und fährt zurück]
-    
-    Stepper2 --> SensorCheck{Hand / Objekt näher<br>als 10 cm am Sensor?}
-    SensorCheck -- Nein --> SensorCheck
-    SensorCheck -- Ja --> Servo[Aktion 3: Servo-Motor schlägt auf 180° aus]
-    
-    Servo --> End([Demo beendet: System wird zurückgesetzt])
-    
-    classDef action fill:#d4edda,stroke:#28a745,stroke-width:2px;
-    classDef wait fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
-    class TimerCheck,SensorCheck wait;
-    class Stepper1,Stepper2,Servo action;
+Das System nutzt eine Master-Slave-Architektur. Der **Raspberry Pi (Master)** übernimmt die High-Level-Logik (JSON-Parsing, Scheduling, Display-Rendering), während der **Arduino (Slave / "Dumb Bridge")**ausschließlich für harte Echtzeit-Hardware-Steuerung zuständig ist.
+
+### 2.1 Raspberry Pi (Master)
+
+- **I2C OLED-Display (SH1106):**
+    - VCC ➔ 3.3V (Pin 1) oder 5V (Pin 2)
+    - GND ➔ GND (Pin 6)
+    - SDA ➔ GPIO 2 (Pin 3)
+    - SCL ➔ GPIO 3 (Pin 5)
+- **USB-Verbindung:** Zum Arduino (für Serielle Kommunikation `/dev/ttyACM0`).
+
+### 2.2 Arduino Uno/Nano (Hardware Bridge)
+
+- **Stepper-Motor (28BYJ-48 via ULN2003) – Dosierungs-Schleuse:**
+    - IN1 ➔ **A0** | IN2 ➔ **A1** | IN3 ➔ **A2** | IN4 ➔ **A3**
+- **Ultraschallsensor (HC-SR04) – Hand-Erkennung:**
+    - TRIG ➔ **Pin 4** | ECHO ➔ **Pin 5**
+- **Servo 1 – Ausgabe-Schleuse:**
+    - Signal ➔ **Pin 3**
+- **Servo 2 – Nachfüll-Schloss:**
+    - Signal ➔ **Pin 6**
+- **RFID-Sensor (MFRC522) – Authentifizierung (SPI-Bus):**
+    - VCC ➔ **3.3V** *(Zwingend!)* | GND ➔ GND
+    - RST ➔ **Pin 9** | SDA (SS) ➔ **Pin 10** | MOSI ➔ **Pin 11** | MISO ➔ **Pin 12** | SCK ➔ **Pin 13**
+- *Stromversorgungshinweis:* Um Brownouts zu verhindern, werden Servos im Idealfall über eine externe 5V-Quelle (mit gemeinsamem GND zum Arduino) versorgt.
+
+## 3. Workspace-Struktur & Python-Bibliothek
+
+Das Projekt folgt strikt dem *Separation of Concerns*-Prinzip. Die Logik ist in eine modulare Bibliothek (`cps_lib`) ausgelagert.
+
+Plaintext
+
+```
+/workspace
+ ├── configs/
+ │    └── medication_plans.json   # Lokale, dynamische Datenbank der Pläne
+ ├── cps_lib/
+ │    ├── __init__.py             # Macht den Ordner zum Python-Modul
+ │    ├── demo.py                 # Die lineare Ausgabe-Pipeline (Pitch-Sequenz)
+ │    ├── normal_mode.py          # Hintergrund-Scheduler, JSON-Parser & RFID-Abfrage
+ │    ├── oled.py                 # Threading-basiertes Luma.oled Display-Rendering
+ │    ├── serial_link.py          # Stabile serielle Kommunikation mit 60s Timeout
+ │    ├── servomotor.py           # Abstraktionsschicht für Winkel-Befehle
+ │    ├── steppermotor.py         # Hardware-Muster (z.B. Radar-Sweep, 180°-Drehung)
+ │    └── ultraschall.py          # Distanzberechnung
+ ├── cps_bridge.ino               # Der C++ Code für den Arduino
+ └── main.py                      # Einstiegspunkt (CLI) und Thread-Management
 ```
 
-### Technisches Diagram:
-```mermaid
-sequenceDiagram
-    participant CLI as main.py (CLI)
-    participant Demo as demo.py (Logik)
-    participant OLED as oled.py (Thread)
-    participant Serial as serial_link (Mutex Lock)
-    participant Arduino as Arduino (Bridge / Hardware)
+## 4. System-Flow: Wie funktioniert es?
 
-    CLI->>Demo: run() aufrufen
-    Demo->>Serial: servomotor.set_angle(0)
-    Serial->>Arduino: UART: "SRV:0\n"
-    
-    Demo->>OLED: init() & start_timer(120)
-    activate OLED
-    Note right of OLED: Hintergrund-Thread startet
+1. **Planung (Web -> JSON):** Über ein externes Interface werden Zeiten und Dosen in der Datei `medication_plans.json` gespeichert. Dies passiert rein lokal (DSGVO-konform).
+2. **Live-Scheduling:** Die Datei `normal_mode.py` läuft als Hintergrund-Thread auf dem Pi. Sie liest minütlich die JSON-Datei ein. Stimmen Wochentag und Uhrzeit überein, wird die Ausgabelogik (`demo.py`) getriggert.
+3. **Vorbereitung (Asynchron):** Das OLED-Display wechselt in den Ladebalken-Modus. Der Stepper-Motor rüttelt die Pillen in den internen Schacht. Zu diesem Zeitpunkt ist das Gerät nach außen noch verschlossen.
+4. **Ausgabe (Fail-Safe):** Das System wartet in einer Schleife, bis der Ultraschallsensor eine Distanz von <= 10 cm meldet (Hand des Patienten). Erst dann sendet der Pi den Befehl `SRV:180` an den Arduino, der den Servo öffnet und die Pillen freigibt.
+5. **Sicherheit (RFID):** Parallel fragt der Pi dauerhaft `RFID:GET` ab. Wird der Chip einer Pflegekraft erkannt, öffnet Servo 2 kurzzeitig das obere Nachfüll-Schloss.
 
-    par OLED Aktualisierung (Asynchron)
-        loop Jede Sekunde
-            OLED->>Serial: send_and_receive("OLED:xx:xx|Timer")
-            Serial->>Arduino: UART string auswerten & Display updaten
-        end
-    and Warten in der Hauptlogik
-        loop Solange countdown_seconds > 0
-            Demo->>OLED: Lese countdown_seconds
-            Note left of Demo: time.sleep(1)
-        end
-    end
+## 5. Größte technische Hürden & unsere Lösungen
 
-    Demo->>Serial: steppermotor.muster_radar_sweep()
-    Note right of Serial: Lock blockiert serielle Schnittstelle für andere Threads
-    Serial->>Arduino: UART: "STP:341", "STP:-682", ... (Schleife)
-    Arduino-->>Serial: "ACK:STP"
-    
-    Demo->>Serial: steppermotor.muster_180_und_zurueck()
-    Serial->>Arduino: UART: "STP:1024" -> Delay 5s -> "STP:-1024"
-    Arduino-->>Serial: "ACK:STP"
+Während der Entwicklung stießen wir auf klassische Herausforderungen der Embedded-Entwicklung. So wurden sie gelöst:
 
-    loop Bis Distanz <= 10.0 cm
-        Demo->>Serial: ultraschall.get_distance()
-        Serial->>Arduino: UART: "US:GET"
-        Arduino-->>Serial: "DIST:x.x"
-        Serial-->>Demo: Float (Distanz)
-    end
+### Hürde 1: Arduino RAM-Overflow (Speichermangel)
 
-    Demo->>Serial: servomotor.set_angle(180)
-    Serial->>Arduino: UART: "SRV:180\n"
-    
-    Demo->>OLED: stop()
-    deactivate OLED
-    Demo->>Serial: servomotor.set_angle(0) (Reset)
-    Demo-->>CLI: Rückkehr zum Terminal-Menü
-```
----
+- **Problem:** Das OLED-Display benötigte zusammen mit der Bibliothek `U8g2` zu viel des extrem knappen SRAMs (2 KB) des Arduinos. Der Arduino stürzte unvorhersehbar ab.
+- **Lösung:** **Architektur-Wechsel.** Das Display wurde physisch vom Arduino an den Raspberry Pi (I2C) ausgelagert. Rendering und Fonts werden nun über Python (`luma.oled` & `Pillow`) berechnet. Der Arduino wurde zur reinen, ausfallsicheren Sensor-Bridge "degradiert" und hat nun 90 % Speicher frei.
 
-## 2. Systemanforderungen (Requirements)
+### Hürde 2: Stepper-Motor zu schwach / verliert Schritte
 
-### 2.1 Hardware-Anforderungen
-*   **Controller:** 
-    *   Raspberry Pi (mit USB-Port für serielle Kommunikation)
-    *   Arduino (Uno, Nano oder Mega)
-*   **Aktoren:**
-    *   Schrittmotor: 28BYJ-48 inkl. ULN2003 Treiberboard
-    *   Servomotor: SG90
-*   **Sensoren & Ausgabe:**
-    *   Ultraschallsensor: HC-SR04
-    *   OLED Display: 1.3" I2C SH1106 (128x64 Pixel)
-*   **Sonstiges:** USB-Kabel (Pi zu Arduino), Jumper-Kabel (Breadboard). *Hinweis: Für einen stabilen Betrieb sollten Stepper und Servo idealerweise über eine separate 5V-Stromquelle (mit gemeinsamem Ground zum Arduino) versorgt werden.*
+- **Problem:** Der kleine 28BYJ-48 Stepper hatte im Half-Step-Modus nicht genug Drehmoment für mechanische Widerstände und "rutschte" durch (Skipping). Bei Sweeps drehte er sich mit der Zeit endlos weiter ("Massenträgheits-Drift").
+- **Lösung:** Umprogrammierung des Arduinos auf den **Dual-Coil Full-Step Mode (Power-Modus)**. Es stehen nun immer zwei Spulen gleichzeitig unter Strom für maximales Drehmoment. Zusätzlich wurde die Geschwindigkeit (`delayMicroseconds(3000)`) gesenkt, um das Magnetfeld voll aufzubauen, und ein kurzes `time.sleep(0.3)` in der Python-Muster-Logik integriert, um den Schwung vor einem Richtungswechsel abzubremsen.
 
-### 2.2 Software-Anforderungen
-*   **Raspberry Pi:** Python 3.x, Bibliothek `pyserial`
-*   **Arduino IDE:** Für den Upload des Bridge-Skripts
-*   **Arduino Bibliotheken:** `Servo` (Standard), `Stepper` (Standard), `U8g2` (von *oliver*, für das SH1106 Display)
+### Hürde 3: SPI-Pin Konflikt
 
----
+- **Problem:** Der MFRC522 RFID-Reader benötigt hardwareseitig zwingend die SPI-Pins 11, 12 und 13. Diese waren bereits durch den Stepper belegt.
+- **Lösung:** Digitale Flexibilität genutzt. Der Stepper wurde auf die Analog-Pins (A0–A3) des Arduinos umverkabelt. Ein Arduino kann Analog-Pins problemlos als digitale Ausgänge (`OUTPUT`) deklarieren und nutzen, wodurch der SPI-Bus für das RFID-Modul frei wurde.
 
-## 3. Pin-Layout & Verkabelung (Arduino)
+### Hürde 4: Brownout durch Servos (System-Abstürze)
 
-Die Hardware wird wie folgt an den Arduino angeschlossen. Die I2C-Pins variieren je nach Arduino-Modell (beim Uno/Nano sind es A4 und A5).
+- **Problem:** Wenn die RFID-Karte erkannt wurde, sollte der Servo anlaufen. Das System fror jedoch sofort ein.
+- **Ursache:** Servos ziehen beim Anlaufen sehr hohe Stromspitzen (Inrush Current). Der 5V-Regler des Arduinos konnte das nicht leisten. Die Spannung brach ein (Brownout), was sofort den 3.3V-gespeisten RFID-Chip und den Arduino einfrieren ließ.
+- **Lösung:** Hardware-Entkopplung. Versorgung stromhungriger Aktoren (Servos/Stepper) über separate Stromquellen (mit Ground-Sharing) oder Puffer-Kondensatoren, um Logik-Strom (Arduino/Sensoren) von Antriebs-Strom zu trennen.
 
-| Komponente | Pin am Arduino | Bemerkung |
-| :--- | :--- | :--- |
-| **Servo (SG90)** | `D3` (PWM) | Steuerleitung (meist orange/gelb) |
-| **HC-SR04 (Ultraschall)** | `D4` | TRIG (Trigger) |
-| | `D5` | ECHO |
-| **28BYJ-48 (Stepper via ULN2003)** | `D8` | IN1 |
-| | `D10` | IN2 *(Gekreuzt für flüssigen Lauf)* |
-| | `D9` | IN3 *(Gekreuzt für flüssigen Lauf)* |
-| | `D11` | IN4 |
-| **SH1106 OLED Display (I2C)** | `A4` | SDA (Data) |
-| | `A5` | SCL (Clock) |
+### Hürde 5: Befehls-Staus & Serial Timeout
 
----
-
-## 4. Software-Struktur (Raspberry Pi)
-
-Das Python-Projekt ist modular in einer eigenen Bibliothek (`cps_lib`) aufgebaut. Alle Aufrufe laufen exklusiv über die `main.py`, um Kollisionen auf dem seriellen USB-Port (UART) zu vermeiden.
-
-```text
-cps_projekt/
-├── cps_bridge.ino           # Arduino C++ "Dumb Bridge" Code
-├── main.py                  # Zentraler Einstiegspunkt (CLI & Multithreading)
-└── cps_lib/
-    ├── __init__.py          
-    ├── serial_link.py       # Thread-sicheres Kommunikationsmodul mit Mutex-Lock
-    ├── steppermotor.py      # Abstrakte Bewegungsmuster (Radar, 180°-Drehung)
-    ├── servomotor.py        # Winkeleinstellung (0-180°)
-    ├── ultraschall.py       # Distanzmessung und Parsing
-    ├── oled.py              # Hintergrund-Thread für Timer & Systemuhrzeit
-    └── demo.py              # Präsentations-Ablauf (wird von main.py aufgerufen)
-```
-
----
-
-## 5. Inbetriebnahme (How to Use)
-
-### Schritt 1: Arduino vorbereiten
-1. Öffne die Arduino IDE.
-2. Navigiere zu *Sketch -> Bibliothek einbinden -> Bibliotheken verwalten*. Suche nach **U8g2** und installiere die Bibliothek von *oliver*.
-3. Verbinde den Arduino per USB mit deinem Rechner.
-4. Lade den Code aus der Datei `cps_bridge.ino` auf den Arduino hoch.
-5. Verbinde den Arduino nun per USB mit dem Raspberry Pi.
-
-### Schritt 2: Raspberry Pi vorbereiten
-1. Klone oder kopiere die gesamte Ordnerstruktur (`cps_projekt/`) auf den Raspberry Pi.
-2. Öffne ein Terminal und installiere die benötigte serielle Bibliothek:
-   ```bash
-   pip install pyserial
-   ```
-3. Prüfe in der Datei `cps_lib/serial_link.py`, ob der `PORT` korrekt ist (Standardmäßig `/dev/ttyACM0` oder `/dev/ttyUSB0`).
-
-### Schritt 3: Ausführung & Steuerung
-Da das System dem "Single Point of Entry"-Prinzip folgt, musst du nur ein einziges Skript starten:
-
-Navigiere im Terminal in den Projektordner und führe aus:
-```bash
-python main.py
-```
-
-Es öffnet sich die CPS Steuerungs-Konsole. Dir stehen folgende Befehle zur Verfügung:
-
-**Automatik-Modus (Hintergrund-Thread):**
-*   `auto on` -> Startet die kontinuierliche Ultraschall-Überwachung und die entsprechenden Ausweich-If-Cases.
-*   `auto off` -> Stoppt die Sensorauswertung sofort.
-
-**Präsentations-Modus:**
-*   `demo` -> Startet den fest programmierten Vorführ-Ablauf (OLED-Timer -> Stepper-Muster -> Warten auf Sensor -> Servo-Aktion). 
-    * *Wichtig:* Stelle sicher, dass die Automatik vorher mit `auto off` beendet wurde, damit sich die Funktionen nicht überschneiden.
-
-**Manueller Test-Modus:**
-*   `srv <0-180>` -> Steuert den Servomotor auf den genauen Winkel (z.B. `srv 90`).
-*   `stp 1` -> Startet manuell das 120° Radar-Sweep-Muster des Steppers (Dauer: 2 Min).
-*   `stp 2` -> Startet manuell die 180°-Drehung des Steppers (mit 5s Pause).
-
-**Beenden:**
-*   `exit` (oder STRG+C) -> Fährt alle Hintergrund-Threads sauber herunter und schließt die serielle Verbindung.
+- **Problem:** Bei längeren Stepper-Mustern (die > 10 Sekunden dauern), warf Python Fehler oder fing an, Befehle wirr zwischenzuspeichern, weil der Arduino scheinbar nicht mehr reagierte.
+- **Lösung:** Anpassung der seriellen Kommunikation. Das Timeout in der `serial_link.py` wurde auf 60 Sekunden erhöht. Die Python-Bridge blockiert nun absichtlich synchron, bis der Arduino mit `ACK:STP`die physische Beendigung der Bewegung bestätigt. Systemzustände bleiben so strikt synchron.
