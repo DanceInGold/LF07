@@ -6,7 +6,7 @@ import os
 # --- KONFIGURATION ---
 # Trage hier die IP-Adresse deines Web-Pis ein (wo der Webserver läuft)
 # Beispiel: "http://192.168.178.50/pfad/zum/ordner"
-WEB_PI_URL = "http://192.168.2.5/mhtf/data" 
+WEB_PI_URL = "http://192.168.2.5:8000/mhtf/data" 
 
 def fetch_file(filename):
     """Fordert eine spezifische JSON-Datei vom Webserver an."""
