@@ -1,5 +1,5 @@
 import time
-from cps_lib import steppermotor, servomotor, demo, oled, normal_mode, mqtt_sync
+from cps_lib import steppermotor, servomotor, demo, oled, normal_mode
 from cps_lib.serial_link import send_and_receive
 
 
