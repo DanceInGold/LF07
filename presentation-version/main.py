@@ -12,8 +12,6 @@ def main():
     oled.init()
     oled.set_mode("standby") 
 
-    mqtt_sync.start()
-
     servomotor.set_angle(0)
     send_and_receive("SRV2:0") # Schloss direkt beim Start sichern
     
@@ -102,7 +100,6 @@ def main():
 
     print("\nFahre System herunter...")
     normal_mode.stop()
-    mqtt_sync.stop()
     oled.stop() 
     print("Beendet.")
 

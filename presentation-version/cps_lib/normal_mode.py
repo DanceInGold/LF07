@@ -3,7 +3,7 @@ import threading
 import json
 import os
 from datetime import datetime
-from cps_lib import demo
+from cps_lib import demo, http_sync
 from cps_lib.serial_link import send_and_receive
 
 # Mapping der Python-Wochentage (0 = Montag) auf die deutschen JSON-Kürzel
@@ -103,6 +103,10 @@ def _auto_worker():
 def start():
     global is_running
     if not is_running:
+        # 1. Initiale HTTP-Synchronisation ausführen
+        http_sync.sync_all()
+        
+        # 2. Hintergrund-Worker starten
         is_running = True
         threading.Thread(target=_auto_worker, daemon=True).start()
 
